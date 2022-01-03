@@ -111,7 +111,7 @@
             case "HERE":
                 $.getJSON('./style/apollo-bright-here.json', function(styleData) { 
                     style = styleData;                    
-                    styleData.sources.osm.tiles[0] = styleData.sources.osm.tiles[0].replace("APIKEY_PLACEHOLDER", credential);
+                    styleData.sources.here.tiles[0] = styleData.sources.here.tiles[0].replace("APIKEY_PLACEHOLDER", credential);
                     addMapImpl(style);                
                 });
                 break;
