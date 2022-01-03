@@ -3,33 +3,182 @@
 <head>
     <meta charset='utf-8' />
     <title>Mapbox GL Inspect</title>
-    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
     <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v1.13.1/mapbox-gl.js'></script>
     <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v1.13.1/mapbox-gl.css' rel='stylesheet' />
 	<script src='./dist/mapbox-gl-inspect.js'></script>
     <link href='./dist/mapbox-gl-inspect.css' rel='stylesheet' />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.0/jquery-ui.js"></script>
+    <link href="https://code.jquery.com/ui/1.13.0/themes/base/jquery-ui.css" rel="stylesheet">
     <style>
         body { margin:0; padding:0; }
-        #map { position:absolute; top:0; bottom:0; width:100%; }
+        #map { position:absolute; top:0; bottom:0; width:100%;}
+        #tile_boundary_ui {background-color: #fff; position: absolute; top: 5px; left: 5px;}
+        .map-overlay {
+        font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+        position: absolute;
+        width: 200px;
+        top: 0;
+        left: 0;
+        padding: 10px;
+        }
+        
+        .map-overlay .map-overlay-inner {
+        background-color: #ffffff60;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        border-radius: 3px;
+        padding: 10px;
+        margin-bottom: 10px;
+        }
+        
+        .map-overlay-inner fieldset {
+        border: none;
+        padding: 0;
+        margin: 0 0 10px;
+        }
+        
+        .map-overlay-inner fieldset:last-child {
+        margin: 0;
+        }
+        
+        .map-overlay-inner label {
+        display: block;
+        font-weight: bold;
+        }
+        
+        .map-overlay-inner button {
+        background-color: cornflowerblue;
+        color: white;
+        border-radius: 5px;
+        display: inline-block;
+        height: 20px;
+        border: none;
+        cursor: pointer;
+        }
+        
+        .map-overlay-inner button:focus {
+        outline: none;
+        }
+        
+        .map-overlay-inner button:hover {
+        background-color: blue;
+        box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.1);
+        -webkit-transition: background-color 500ms linear;
+        -ms-transition: background-color 500ms linear;
+        transition: background-color 500ms linear;
+        } 
     </style>
 </head>
 <body>
 
 <div id='map'></div>
+<div class="map-overlay">
+    <div class="map-overlay-inner">    
+    <fieldset>
+        <label for="show_tile">Show tile boundary</label>
+        <input type="checkbox" id="show_tile"/>
+    </fieldset>
+    <fieldset>
+        <label for="mapbox_token">Mapbox token</label>
+        <input type="text" id="mapbox_token" name="mapbox-token">
+        <button type="button" id="load_mapbox_tiles" name="Load map">Load Map</button>
+    </fieldset>
+    <fieldset>
+        <label for="HERE_apikey">HERE API Key</label>
+        <input type="text" id="HERE_apikey" name="HERE-apikey">    
+        <button type="button" id="load_HERE_tiles" name="Load map">Load Map</button>
+    </fieldset>
+    </div>
+</div>
+<div id="mapbox_token_dialog" style="display:none" title="Tip">
+    <p>you must provide a mapbox token. Refer to <a href="https://docs.mapbox.com/help/glossary/access-token/">this page</a>></p>
+</div>
+<div id="HERE_APIKey_dialog" style="display:none" title="Tip">
+    <p>you must provide an HERE API key. Refer to <a href="https://developer.here.com/tutorials/harpgl/#acquire-credentials">this page</a>></p>
+</div>
 <script>
-mapboxgl.accessToken = 'pk.eyJ1IjoibW9yZ2Vua2FmZmVlIiwiYSI6IjIzcmN0NlkifQ.0LRTNgCc-envt9d5MzR75w';
-var map = new mapboxgl.Map({
-    container: 'map',
-    style: 'mapbox://styles/mapbox/streets-v11',
-    center: [-74.50, 40],
-    zoom: 3,
-    hash: true
-});
-map.addControl(new mapboxgl.NavigationControl());
-map.addControl(new MapboxInspect({
-  showInspectButton: true,
-  showMapPopup: true
-}));
+    function addMap(mapProvider, credential)
+    {
+        var style;
+        switch(mapProvider)
+        {
+            case "mapbox":        
+                mapboxgl.accessToken = credential;
+                addMapImpl("mapbox://styles/mapbox/streets-v11");
+                break;
+            case "HERE":
+                $.getJSON('./dist/apollo-bright.json', function(styleData) { 
+                    style = styleData;                    
+                    styleData.sources.osm.tiles[0] = styleData.sources.osm.tiles[0].replace("APIKEY_PLACEHOLDER", credential);
+                    addMapImpl(style);                
+                });
+                break;
+            default:
+                alert("Unknown map provider");
+        }
+    }
+
+    function addMapImpl(styleURLOrObject)
+    {    
+        var map = new mapboxgl.Map({
+            container: 'map',
+            style: styleURLOrObject,	
+            center: [13, 52],
+            zoom: 3,
+            hash: true
+        });
+
+        map.addControl(new mapboxgl.NavigationControl());
+        map.addControl(new MapboxInspect({
+            showInspectButton: true,
+            showMapPopup: true
+        }));
+
+        // Add the handler for the "Show tile boundary" checkbox
+        var checkbox = document.getElementById('show_tile');
+        checkbox.addEventListener('change', (e) => {
+            map.showTileBoundaries = e.target.checked;
+        });
+    }
+
+    document.getElementById('load_mapbox_tiles').addEventListener('click', ()=>{
+        if (localStorage.mapboxToken) {
+            addMap("mapbox", localStorage.mapboxToken);
+            return;
+        }
+    
+        var mapboxToken = document.getElementById('mapbox_token').value;
+        if ( mapboxToken == "") {
+            $('#mapbox_token_dialog').dialog()
+        }
+        else {
+            localStorage.mapboxToken = mapboxToken;
+            addMap("mapbox", mapboxToken);
+        }
+    });
+
+    document.getElementById('load_HERE_tiles').addEventListener('click', ()=>{
+        if (localStorage.HEREAPIKey) {
+            addMap("HERE", localStorage.HEREAPIKey);
+            return;
+        }
+
+        var HEREAPIKey = document.getElementById('HERE_apikey').value;
+        if ( HEREAPIKey == "") {
+            $('#HERE_APIKey_dialog').dialog()
+        }
+        else {
+            localStorage.HEREAPIKey = HEREAPIKey;
+            addMap("HERE", HEREAPIKey);
+        }
+    });
+
+    if (localStorage.mapboxToken) {
+        addMap("mapbox", localStorage.mapboxToken);
+    }
+    else if (localStorage.HEREAPIKey) {
+        addMap("HERE", localStorage.HEREAPIKey);
+    }
 </script>
 
 </body>
