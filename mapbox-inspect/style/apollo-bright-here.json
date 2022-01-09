@@ -1579,6 +1579,50 @@
         "text-halo-blur": 1,
         "text-color": "rgba(236, 137, 141, 1)"
       }
+    },
+    {
+      "id": "address-number-symbol",
+      "type": "symbol",
+      "source": "here",
+      "source-layer": "buildings",
+      "minzoom": 17.8,
+      "maxzoom": 24,
+      "filter": ["all", ["==", "kind", "address"]],
+      "layout": {
+        "text-field": "{addr_housenumber}",
+        "text-offset": [0, 0.8],
+        "text-anchor": "center",
+        "text-size": 10,
+        "text-font": ["Roboto Medium", "Noto Sans Bold"]
+      },
+      "paint": {
+        "text-halo-color": "rgba(255, 255, 255, 0.8)",
+        "text-halo-width": 1,
+        "text-halo-blur": 1,
+        "text-color": "rgba(66, 67, 91, 1)"
+      }
+    },
+    {
+      "id": "building-symbol",
+      "type": "symbol",
+      "source": "here",
+      "source-layer": "buildings",
+      "minzoom": 17.5,
+      "maxzoom": 24,
+      "filter": ["all", ["==", "kind", "building"]],
+      "layout": {
+        "text-field": "{name}",
+        "text-offset": [0, 0.8],
+        "text-anchor": "center",
+        "text-size": 11,
+        "text-font": ["Roboto Medium", "Noto Sans Bold"]
+      },
+      "paint": {
+        "text-halo-color": "rgba(255, 255, 255, 0.8)",
+        "text-halo-width": 1,
+        "text-halo-blur": 1,
+        "text-color": "rgba(66, 67, 31, 1)"
+      }
     }
   ],
   "id": "apollomapping-bright-here"
