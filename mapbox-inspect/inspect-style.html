@@ -79,6 +79,14 @@
         <input type="checkbox" id="show_tile"/>
     </fieldset>
     <fieldset>
+        <label for="show_inspect_map">Show inspect map</label>
+        <input type="checkbox" id="show_inspect_map"/>
+    </fieldset>
+    <fieldset>
+        <label for="show_popup_on_hover">Show popup on hover</label>
+        <input type="checkbox" id="show_popup_on_hover"/>
+    </fieldset>
+    <fieldset>
         <label for="mapbox_token">Mapbox token</label>
         <input type="text" id="mapbox_token" name="mapbox-token">
         <button type="button" id="load_mapbox_tiles" name="load-map">Load Map</button>
@@ -99,6 +107,12 @@
     <p>you must provide an HERE API key. Refer to <a href="https://developer.here.com/tutorials/harpgl/#acquire-credentials">this page</a></p>
 </div>
 <script>
+    // My map instance. Defined in global scope so that the "show_tile" handler can be added at global scope
+    var map;
+
+    // MapboxInspect instance. Defined in global scope so that the "show_popup_on_hover" handler can be added at global scope
+    //var mapboxInspect;
+
     function addMap(mapProvider, credential)
     {
         var style;
@@ -106,13 +120,15 @@
         {
             case "mapbox":        
                 mapboxgl.accessToken = credential;
-                addMapImpl("mapbox://styles/mapbox/streets-v11");
+                localStorage.lastLoadmap = mapProvider;
+                createMap("mapbox://styles/mapbox/streets-v11");
                 break;
             case "HERE":
-                $.getJSON('./style/apollo-bright-here.json', function(styleData) { 
+                $.getJSON('./style/apollo-bright-here.json', function(styleData) {
+                    localStorage.lastLoadmap = mapProvider;
                     style = styleData;                    
                     styleData.sources.here.tiles[0] = styleData.sources.here.tiles[0].replace("APIKEY_PLACEHOLDER", credential);
-                    addMapImpl(style);                
+                    createMap(style);                
                 });
                 break;
             default:
@@ -120,28 +136,49 @@
         }
     }
 
-    function addMapImpl(styleURLOrObject)
-    {    
-        var map = new mapboxgl.Map({
+    function addInspectControl(showPopupOnHover)
+    {
+        if (typeof mapboxInspect != "undefined")
+            map.removeControl(mapboxInspect);
+
+        mapboxInspect = new MapboxInspect({
+            showMapPopup: true,
+            showMapPopupOnHover: showPopupOnHover,
+            showInspectMapPopupOnHover: showPopupOnHover
+        })
+        map.addControl(mapboxInspect);
+    }
+
+    // Create a map with the specified style
+    function createMap(styleURLOrObject)
+    {
+        map = new mapboxgl.Map({
             container: 'map',
-            style: styleURLOrObject,	
+            style: styleURLOrObject,         
             center: [13, 52],
             zoom: 3,
             hash: true
         });
 
+        map.showTileBoundaries = document.getElementById('show_tile').checked;
         map.addControl(new mapboxgl.NavigationControl());
-        map.addControl(new MapboxInspect({
-            showInspectButton: true,
-            showMapPopup: true
-        }));
-
-        // Add the handler for the "Show tile boundary" checkbox
-        var checkbox = document.getElementById('show_tile');
-        checkbox.addEventListener('change', (e) => {
-            map.showTileBoundaries = e.target.checked;
-        });
+        addInspectControl(document.getElementById('show_popup_on_hover').checked);        
     }
+
+    // Add the handler for the "Show tile boundary" checkbox
+    document.getElementById('show_tile').addEventListener('change', (e) => {
+        map.showTileBoundaries = e.target.checked;
+    });
+
+    document.getElementById('show_popup_on_hover').addEventListener('change', (e) => {
+        mapboxInspect._popup.remove(); // Clear the existing popup
+        addInspectControl(e.target.checked);
+    });
+
+    document.getElementById('show_inspect_map').addEventListener('change', (e) => {
+        mapboxInspect._showInspectMap = e.target.checked;
+        mapboxInspect.render()
+    });
 
     document.getElementById('load_mapbox_tiles').addEventListener('click', ()=>{
         if (localStorage.mapboxToken) {
@@ -170,7 +207,7 @@
             $('#HERE_APIKey_dialog').dialog()
         }
         else {
-            localStorage.HEREAPIKey = HEREAPIKey;
+            localStorage.HEREAPIKey = HEREAPIKey;            
             addMap("HERE", HEREAPIKey);
         }
     });
@@ -182,11 +219,14 @@
         localStorage.removeItem('mapboxToken');
     });
 
-    if (localStorage.mapboxToken) {
-        addMap("mapbox", localStorage.mapboxToken);
-    }
-    else if (localStorage.HEREAPIKey) {
-        addMap("HERE", localStorage.HEREAPIKey);
+    if (localStorage.lastLoadmap)
+    {
+        if (localStorage.lastLoadmap = "mapbox" && localStorage.mapboxToken) {
+            addMap("mapbox", localStorage.mapboxToken);
+        }
+        else if (localStoarge.lastLoadmap = "HERE" && localStorage.HEREAPIKey) {
+            addMap("HERE", localStorage.HEREAPIKey);
+        }
     }
 </script>
 
