@@ -185,6 +185,8 @@ MapboxInspect.prototype._onSourceChange = function () {
   var mapStyleSourcesNames = Object.keys(mapStyle.sources);
   var previousSources = Object.assign({}, sources);
 
+  var layers = mapStyle.layers;
+ 
   //NOTE: This heavily depends on the internal API of Mapbox GL
   //so this breaks between Mapbox GL JS releases
   Object.keys(map.style.sourceCaches).forEach(function (sourceId) {
@@ -194,7 +196,32 @@ MapboxInspect.prototype._onSourceChange = function () {
       sources[sourceId] = layerIds;
     } else if (sourceCache._source.type === 'geojson') {
       sources[sourceId] = [];
+    } else {
+      var extractedLayerIds = [];
+      layers.forEach( function(element)
+      { 
+        // Ensure the layer contains "source-layer" and "source" properties
+        if (!element.hasOwnProperty("source-layer") || !element.hasOwnProperty("source"))
+          return;
+
+        // Ensure that we are processing the source for the current sourceId
+        if (sourceId != element['source'])
+          return;
+
+        // Check if the source with the sourceId has vectory type.
+        if(mapStyle.sources.hasOwnProperty(sourceId) && mapStyle.sources[sourceId].type == "vector" )
+        {
+            var sourceLayerId = element['source-layer'];
+            //console.log(sourceLayerId);
+            if(!extractedLayerIds.includes(sourceLayerId))
+              extractedLayerIds.push(sourceLayerId)
+          
+        }
+      });
+      if (extractedLayerIds.size != 0)
+        sources[sourceId] = extractedLayerIds;
     }
+
   });
 
   Object.keys(sources).forEach(function (sourceId) {
@@ -480,11 +507,8 @@ function generateColoredLayers(sources, assignLayerColor) {
   Object.keys(sources).forEach(function (sourceId) {
     var layers = sources[sourceId];
 
-    if (!layers || layers.length === 0) {
-      var colors = alphaColors(sourceId);
-      circleLayers.push(circleLayer(colors.circle, sourceId));
-      lineLayers.push(lineLayer(colors.line, sourceId));
-      polyLayers.push(polygonLayer(colors.polygon, colors.polygonOutline, sourceId));
+    if (!layers || layers.length === 0) {      
+      // Doesn't make sense to generate any layers if there is no layer.
     } else {
       layers.forEach(function (layerId) {
         var colors = alphaColors(layerId);
