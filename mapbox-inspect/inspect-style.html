@@ -13,7 +13,6 @@
     <style>
         body { margin:0; padding:0; }
         #map { position:absolute; top:0; bottom:0; width:100%;}
-        #tile_boundary_ui {background-color: #fff; position: absolute; top: 5px; left: 5px;}
         .map-overlay {
         font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
         position: absolute;
@@ -45,7 +44,7 @@
         display: block;
         font-weight: bold;
         }
-        
+
         .map-overlay-inner button {
         background-color: cornflowerblue;
         color: white;
@@ -56,6 +55,11 @@
         cursor: pointer;
         }
         
+        .checkboxes > label,
+        .checkboxes > input {
+        display: inline;
+        }
+
         .map-overlay-inner button:focus {
         outline: none;
         }
@@ -74,15 +78,15 @@
 <div id='map'></div>
 <div class="map-overlay">
     <div class="map-overlay-inner">    
-    <fieldset>
+    <fieldset class="checkboxes">
         <label for="show_tile">Show tile boundary</label>
         <input type="checkbox" id="show_tile"/>
     </fieldset>
-    <fieldset>
+    <fieldset class="checkboxes">
         <label for="show_inspect_map">Show inspect map</label>
         <input type="checkbox" id="show_inspect_map"/>
     </fieldset>
-    <fieldset>
+    <fieldset class="checkboxes">
         <label for="show_popup_on_hover">Show popup on hover</label>
         <input type="checkbox" id="show_popup_on_hover"/>
     </fieldset>
@@ -142,6 +146,7 @@
             map.removeControl(mapboxInspect);
 
         mapboxInspect = new MapboxInspect({
+            showInspectButton: false,
             showMapPopup: true,
             showMapPopupOnHover: showPopupOnHover,
             showInspectMapPopupOnHover: showPopupOnHover
