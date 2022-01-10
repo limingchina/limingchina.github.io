@@ -226,10 +226,10 @@
 
     if (localStorage.lastLoadmap)
     {
-        if (localStorage.lastLoadmap = "mapbox" && localStorage.mapboxToken) {
+        if (localStorage.lastLoadmap == "mapbox" && localStorage.mapboxToken) {
             addMap("mapbox", localStorage.mapboxToken);
         }
-        else if (localStoarge.lastLoadmap = "HERE" && localStorage.HEREAPIKey) {
+        else if (localStorage.lastLoadmap == "HERE" && localStorage.HEREAPIKey) {
             addMap("HERE", localStorage.HEREAPIKey);
         }
     }
