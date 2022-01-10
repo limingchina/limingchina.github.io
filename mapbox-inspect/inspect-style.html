@@ -92,15 +92,16 @@
     </fieldset>
     <fieldset>
         <label for="mapbox_token">Mapbox token</label>
-        <input type="text" id="mapbox_token" name="mapbox-token">
-        <button type="button" id="load_mapbox_tiles" name="load-map">Load Map</button>
-        <button type="button" id="clear_mapbox_token" name="clear-token">Clear cached access token</button>
+        <input type="text" id="mapbox_token">
+        <button type="button" id="load_mapbox_tiles">Load Map</button>
+        <button type="button" id="clear_mapbox_token">Clear cached access token</button>
     </fieldset>
     <fieldset>
         <label for="HERE_apikey">HERE API Key</label>
         <input type="text" id="HERE_apikey" name="HERE-apikey">    
-        <button type="button" id="load_HERE_tiles" name="load-map">Load Map</button>
-        <button type="button" id="clear_HERE_apikey" name="clear-key">Clear cached API Key</button>
+        <button type="button" id="load_HERE_tiles_style_berlin">Load Map(Style Berlin)</button>
+        <button type="button" id="load_HERE_tiles_style_apollo">Load Map(Style Apollo)</button>
+        <button type="button" id="clear_HERE_apikey">Clear cached API Key</button>
     </fieldset>
     </div>
 </div>
@@ -127,13 +128,22 @@
                 localStorage.lastLoadmap = mapProvider;
                 createMap("mapbox://styles/mapbox/streets-v11");
                 break;
-            case "HERE":
+            case "HERE_berlin":
+                $.getJSON("https://assets.vector.hereapi.com/styles/berlin/base/mapbox/tilezen?apikey="+credential, function(styleData) {
+                    localStorage.lastLoadmap = mapProvider;
+                    style = styleData;
+                    // Replace the base tiles with the ones containing detailed japan data                    
+                    styleData.sources.omv.tiles[0] = styleData.sources.omv.tiles[0].replace("base/", "core/");
+                    createMap(style);                
+                });     
+                break;
+            case "HERE_apollo":                
                 $.getJSON('./style/apollo-bright-here.json', function(styleData) {
                     localStorage.lastLoadmap = mapProvider;
                     style = styleData;                    
                     styleData.sources.here.tiles[0] = styleData.sources.here.tiles[0].replace("APIKEY_PLACEHOLDER", credential);
                     createMap(style);                
-                });
+                });                
                 break;
             default:
                 alert("Unknown map provider");
@@ -201,9 +211,10 @@
         }
     });
 
-    document.getElementById('load_HERE_tiles').addEventListener('click', ()=>{
+    function loadHERETiles(mapProvider)
+    {
         if (localStorage.HEREAPIKey) {
-            addMap("HERE", localStorage.HEREAPIKey);
+            addMap(mapProvider, localStorage.HEREAPIKey);
             return;
         }
 
@@ -213,9 +224,14 @@
         }
         else {
             localStorage.HEREAPIKey = HEREAPIKey;            
-            addMap("HERE", HEREAPIKey);
+            addMap(mapProvider, HEREAPIKey);
         }
-    });
+    }
+
+    document.getElementById('load_HERE_tiles_style_berlin').addEventListener('click', 
+        () => { loadHERETiles("HERE_berlin") });
+    document.getElementById('load_HERE_tiles_style_apollo').addEventListener('click',
+        () => { loadHERETiles("HERE_apollo") });
 
     document.getElementById('clear_HERE_apikey').addEventListener('click', ()=>{
         localStorage.removeItem('HEREAPIKey');
@@ -229,11 +245,15 @@
         if (localStorage.lastLoadmap == "mapbox" && localStorage.mapboxToken) {
             addMap("mapbox", localStorage.mapboxToken);
         }
-        else if (localStorage.lastLoadmap == "HERE" && localStorage.HEREAPIKey) {
-            addMap("HERE", localStorage.HEREAPIKey);
+        else if (localStorage.lastLoadmap == "HERE_berlin" && localStorage.HEREAPIKey) {
+            addMap("HERE_berlin", localStorage.HEREAPIKey);
+        }
+        else if (localStorage.lastLoadmap == "HERE_apollo" && localStorage.HEREAPIKey) {
+            addMap("HERE_apollo", localStorage.HEREAPIKey);
         }
     }
 </script>
 
 </body>
 </html>
+
