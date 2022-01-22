@@ -10,13 +10,15 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://code.jquery.com/ui/1.13.0/jquery-ui.js"></script>
     <link href="https://code.jquery.com/ui/1.13.0/themes/base/jquery-ui.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.7.2/mapbox-gl-geocoder.min.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.7.2/mapbox-gl-geocoder.css" rel="stylesheet">
     <style>
         body { margin:0; padding:0; }
         #map { position:absolute; top:0; bottom:0; width:100%;}
         .map-overlay {
         font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
         position: absolute;
-        width: 200px;
+        width: 220px;
         top: 0;
         left: 0;
         padding: 10px;
@@ -91,32 +93,24 @@
         <input type="checkbox" id="show_popup_on_hover"/>
     </fieldset>
     <fieldset>
-        <label for="mapbox_token">Mapbox token</label>
-        <input type="text" id="mapbox_token">
-        <button type="button" id="load_mapbox_tiles">Load Map</button>
-        <button type="button" id="clear_mapbox_token">Clear cached access token</button>
+        <button type="button" id="load_mapbox_tiles">Load Mapbox Map</button>
     </fieldset>
     <fieldset>
         <label for="HERE_apikey">HERE API Key</label>
         <input type="text" id="HERE_apikey" name="HERE-apikey">    
-        <button type="button" id="load_HERE_tiles_style_berlin">Load Map(Style Berlin)</button>
-        <button type="button" id="load_HERE_tiles_style_apollo">Load Map(Style Apollo)</button>
+        <button type="button" id="load_HERE_tiles_style_berlin">Load HERE Map(Style Berlin)</button>
+        <button type="button" id="load_HERE_tiles_style_apollo">Load HERE Map(Style Apollo)</button>
         <button type="button" id="clear_HERE_apikey">Clear cached API Key</button>
     </fieldset>
     </div>
-</div>
-<div id="mapbox_token_dialog" style="display:none" title="Tip">
-    <p>you must provide a mapbox token. Refer to <a href="https://docs.mapbox.com/help/glossary/access-token/">this page</a></p>
 </div>
 <div id="HERE_APIKey_dialog" style="display:none" title="Tip">
     <p>you must provide an HERE API key. Refer to <a href="https://developer.here.com/tutorials/harpgl/#acquire-credentials">this page</a></p>
 </div>
 <script>
-    // My map instance. Defined in global scope so that the "show_tile" handler can be added at global scope
-    var map;
 
-    // MapboxInspect instance. Defined in global scope so that the "show_popup_on_hover" handler can be added at global scope
-    //var mapboxInspect;
+    // Mapbox access token from the public examples on mapbox.com website
+    let mapboxToken = "pk.eyJ1IjoiaW5ldGRyYWdvbiIsImEiOiJjanhjMzVwMTAwNjJhM3lvZXJzcG01ajB5In0.aGpl7Nb2_7vw60kiHF4bAg";
 
     function addMap(mapProvider, credential)
     {
@@ -176,8 +170,75 @@
         });
 
         map.showTileBoundaries = document.getElementById('show_tile').checked;
+        
+        // Geocoder control copied from here: 
+        // https://docs.mapbox.com/mapbox-gl-js/example/mapbox-gl-geocoder-accept-coordinates/
+
+        /* Given a query in the form "lng, lat" or "lat, lng"
+         * returns the matching geographic coordinate(s)
+         * as search results in carmen geojson format,
+         * https://github.com/mapbox/carmen/blob/master/carmen-geojson.md 
+         */
+        const coordinatesGeocoder = function (query) {
+            // Match anything which looks like
+            // decimal degrees coordinate pair.
+            const matches = query.match(
+                /^[ ]*(?:Lat: )?(-?\d+\.?\d*)[, ]+(?:Lng: )?(-?\d+\.?\d*)[ ]*$/i
+            );
+            if (!matches) {
+                return null;
+            }
+
+            function coordinateFeature(lng, lat) {
+                return {
+                    center: [lng, lat],
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [lng, lat]
+                    },
+                    place_name: 'Lat: ' + lat + ' Lng: ' + lng,
+                    place_type: ['coordinate'],
+                    properties: {},
+                    type: 'Feature'
+                };
+            }
+
+            const coord1 = Number(matches[1]);
+            const coord2 = Number(matches[2]);
+            const geocodes = [];
+
+            if (coord1 < -90 || coord1 > 90) {
+                // must be lng, lat
+                geocodes.push(coordinateFeature(coord1, coord2));
+            }
+
+            if (coord2 < -90 || coord2 > 90) {
+                // must be lat, lng
+                geocodes.push(coordinateFeature(coord2, coord1));
+            }
+
+            if (geocodes.length === 0) {
+                // else could be either lng, lat or lat, lng
+                geocodes.push(coordinateFeature(coord1, coord2));
+                geocodes.push(coordinateFeature(coord2, coord1));
+            }
+
+            return geocodes;
+        };
+
+        // Add the control to the map.
+        map.addControl(
+            new MapboxGeocoder({
+                accessToken: mapboxToken,
+                localGeocoder: coordinatesGeocoder,
+                zoom: 4,
+                mapboxgl: mapboxgl,
+                reverseGeocode: true
+            })
+        );
+
         map.addControl(new mapboxgl.NavigationControl());
-        addInspectControl(document.getElementById('show_popup_on_hover').checked);        
+        addInspectControl(document.getElementById('show_popup_on_hover').checked);   
     }
 
     // Add the handler for the "Show tile boundary" checkbox
@@ -196,19 +257,7 @@
     });
 
     document.getElementById('load_mapbox_tiles').addEventListener('click', ()=>{
-        if (localStorage.mapboxToken) {
-            addMap("mapbox", localStorage.mapboxToken);
-            return;
-        }
-    
-        var mapboxToken = document.getElementById('mapbox_token').value;
-        if ( mapboxToken == "") {
-            $('#mapbox_token_dialog').dialog()
-        }
-        else {
-            localStorage.mapboxToken = mapboxToken;
-            addMap("mapbox", mapboxToken);
-        }
+        addMap("mapbox", mapboxToken);
     });
 
     function loadHERETiles(mapProvider)
@@ -236,14 +285,11 @@
     document.getElementById('clear_HERE_apikey').addEventListener('click', ()=>{
         localStorage.removeItem('HEREAPIKey');
     });
-    document.getElementById('clear_mapbox_token').addEventListener('click', ()=>{
-        localStorage.removeItem('mapboxToken');
-    });
 
     if (localStorage.lastLoadmap)
     {
-        if (localStorage.lastLoadmap == "mapbox" && localStorage.mapboxToken) {
-            addMap("mapbox", localStorage.mapboxToken);
+        if (localStorage.lastLoadmap == "mapbox") {
+            addMap("mapbox", mapboxToken);
         }
         else if (localStorage.lastLoadmap == "HERE_berlin" && localStorage.HEREAPIKey) {
             addMap("HERE_berlin", localStorage.HEREAPIKey);
@@ -256,4 +302,3 @@
 
 </body>
 </html>
-
