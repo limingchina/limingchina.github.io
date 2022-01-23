@@ -102,10 +102,10 @@
     </fieldset>
     <fieldset class="inline-style">
         <label>Style</label>
-        <input type="radio" id="styleChoice1" name="styleChoice" checked="true">
-        <label for="styleChoice1">Berlin</label>
-        <input type="radio" id="styleChoice2" name="styleChoice">
-        <label for="styleChoice2">Apollo</label>
+        <input type="radio" id="styleChoiceBerlin" name="styleChoice" checked="true" onchange="handleHereMapStyleChange(this);">
+        <label for="styleChoiceBerlin">Berlin</label>
+        <input type="radio" id="styleChoiceApollo" name="styleChoice" onchange="handleHereMapStyleChange(this);">
+        <label for="styleChoiceApollo">Apollo</label>
         <button type="button" id="load_HERE_tiles">Load HERE Map</button>
     </fieldset>
     </div>
@@ -279,6 +279,19 @@
         }
     }
 
+    function handleHereMapStyleChange(target)
+    {
+        switch(target.id)
+        {
+            case "styleChoiceBerlin":
+                loadHERETiles("HERE_berlin");
+                break;
+            case "styleChoiceApollo":
+                loadHERETiles("HERE_apollo");
+                break;
+        }
+    }
+
     document.getElementById('clear_HERE_apikey').addEventListener('click', ()=>{
         localStorage.removeItem('HEREAPIKey');
     });
@@ -313,5 +326,3 @@
 </script>
 </body>
 </html>
-
-
