@@ -18,7 +18,7 @@
         .map-overlay {
         font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
         position: absolute;
-        width: 220px;
+        width: 200px;
         top: 0;
         left: 0;
         padding: 10px;
@@ -57,8 +57,8 @@
         cursor: pointer;
         }
         
-        .checkboxes > label,
-        .checkboxes > input {
+        .inline-style > label,
+        .inline-style > input {
         display: inline;
         }
 
@@ -80,15 +80,15 @@
 <div id='map'></div>
 <div class="map-overlay">
     <div class="map-overlay-inner">    
-    <fieldset class="checkboxes">
+    <fieldset class="inline-style">
         <label for="show_tile">Show tile boundary</label>
         <input type="checkbox" id="show_tile"/>
     </fieldset>
-    <fieldset class="checkboxes">
+    <fieldset class="inline-style">
         <label for="show_inspect_map">Show inspect map</label>
         <input type="checkbox" id="show_inspect_map"/>
     </fieldset>
-    <fieldset class="checkboxes">
+    <fieldset class="inline-style">
         <label for="show_popup_on_hover">Show popup on hover</label>
         <input type="checkbox" id="show_popup_on_hover"/>
     </fieldset>
@@ -97,10 +97,16 @@
     </fieldset>
     <fieldset>
         <label for="HERE_apikey">HERE API Key</label>
-        <input type="text" id="HERE_apikey" name="HERE-apikey">    
-        <button type="button" id="load_HERE_tiles_style_berlin">Load HERE Map(Style Berlin)</button>
-        <button type="button" id="load_HERE_tiles_style_apollo">Load HERE Map(Style Apollo)</button>
+        <input type="text" id="HERE_apikey" name="HERE-apikey">
         <button type="button" id="clear_HERE_apikey">Clear cached API Key</button>
+    </fieldset>
+    <fieldset class="inline-style">
+        <label>Style</label>
+        <input type="radio" id="styleChoice1" name="styleChoice" checked="true">
+        <label for="styleChoice1">Berlin</label>
+        <input type="radio" id="styleChoice2" name="styleChoice">
+        <label for="styleChoice2">Apollo</label>
+        <button type="button" id="load_HERE_tiles">Load HERE Map</button>
     </fieldset>
     </div>
 </div>
@@ -144,42 +150,16 @@
         }
     }
 
-    function addInspectControl(showPopupOnHover)
+    // Geocoder copied from here: 
+    // https://docs.mapbox.com/mapbox-gl-js/example/mapbox-gl-geocoder-accept-coordinates/
+    function coordinatesGeocoder()
     {
-        if (typeof mapboxInspect != "undefined")
-            map.removeControl(mapboxInspect);
-
-        mapboxInspect = new MapboxInspect({
-            showInspectButton: false,
-            showMapPopup: true,
-            showMapPopupOnHover: showPopupOnHover,
-            showInspectMapPopupOnHover: showPopupOnHover
-        })
-        map.addControl(mapboxInspect);
-    }
-
-    // Create a map with the specified style
-    function createMap(styleURLOrObject)
-    {
-        map = new mapboxgl.Map({
-            container: 'map',
-            style: styleURLOrObject,         
-            center: [13, 52],
-            zoom: 3,
-            hash: true
-        });
-
-        map.showTileBoundaries = document.getElementById('show_tile').checked;
-        
-        // Geocoder control copied from here: 
-        // https://docs.mapbox.com/mapbox-gl-js/example/mapbox-gl-geocoder-accept-coordinates/
-
         /* Given a query in the form "lng, lat" or "lat, lng"
          * returns the matching geographic coordinate(s)
          * as search results in carmen geojson format,
          * https://github.com/mapbox/carmen/blob/master/carmen-geojson.md 
          */
-        const coordinatesGeocoder = function (query) {
+         const coordinatesGeocoder = function (query) {
             // Match anything which looks like
             // decimal degrees coordinate pair.
             const matches = query.match(
@@ -225,20 +205,40 @@
 
             return geocodes;
         };
+    }
 
+    // Create a map with the specified style
+    function createMap(styleURLOrObject)
+    {
+        map = new mapboxgl.Map({
+            container: 'map',
+            style: styleURLOrObject,         
+            center: [13, 52],
+            zoom: 3,
+            hash: true
+        });
+
+        map.showTileBoundaries = document.getElementById('show_tile').checked;
+        
         // Add the control to the map.
         map.addControl(
             new MapboxGeocoder({
                 accessToken: mapboxToken,
-                localGeocoder: coordinatesGeocoder,
-                zoom: 4,
+                localGeocoder: coordinatesGeocoder(),
                 mapboxgl: mapboxgl,
                 reverseGeocode: true
             })
         );
 
         map.addControl(new mapboxgl.NavigationControl());
-        addInspectControl(document.getElementById('show_popup_on_hover').checked);   
+
+        mapboxInspect = new MapboxInspect({
+            showInspectButton: false,
+            showMapPopup: true,
+            showMapPopupOnHover: false,
+            showInspectMapPopupOnHover: false
+        });
+        map.addControl(mapboxInspect);
     }
 
     // Add the handler for the "Show tile boundary" checkbox
@@ -248,12 +248,14 @@
 
     document.getElementById('show_popup_on_hover').addEventListener('change', (e) => {
         mapboxInspect._popup.remove(); // Clear the existing popup
-        addInspectControl(e.target.checked);
+        mapboxInspect.options.showMapPopupOnHover = e.target.checked;
+        mapboxInspect.options.showInspectMapPopupOnHover = e.target.checked;
+        mapboxInspect.render();
     });
 
     document.getElementById('show_inspect_map').addEventListener('change', (e) => {
         mapboxInspect._showInspectMap = e.target.checked;
-        mapboxInspect.render()
+        mapboxInspect.render();
     });
 
     document.getElementById('load_mapbox_tiles').addEventListener('click', ()=>{
@@ -277,28 +279,36 @@
         }
     }
 
-    document.getElementById('load_HERE_tiles_style_berlin').addEventListener('click', 
-        () => { loadHERETiles("HERE_berlin") });
-    document.getElementById('load_HERE_tiles_style_apollo').addEventListener('click',
-        () => { loadHERETiles("HERE_apollo") });
-
     document.getElementById('clear_HERE_apikey').addEventListener('click', ()=>{
         localStorage.removeItem('HEREAPIKey');
     });
 
+    document.getElementById('load_HERE_tiles').addEventListener('click', 
+        () => { 
+            var styleChoice = document.getElementsByName('styleChoice');
+            if (styleChoice[0].checked)
+                loadHERETiles("HERE_berlin");
+            else    
+                loadHERETiles("HERE_apollo");
+        });    
+
     if (localStorage.lastLoadmap)
     {
+        var styleChoice = document.getElementsByName('styleChoice');
         if (localStorage.lastLoadmap == "mapbox") {
             addMap("mapbox", mapboxToken);
         }
-        else if (localStorage.lastLoadmap == "HERE_berlin" && localStorage.HEREAPIKey) {
+        else if (localStorage.lastLoadmap == "HERE_berlin" && localStorage.HEREAPIKey) {            
+            styleChoice[0].checked = true;
             addMap("HERE_berlin", localStorage.HEREAPIKey);
         }
         else if (localStorage.lastLoadmap == "HERE_apollo" && localStorage.HEREAPIKey) {
+            styleChoice[1].checked = true;
             addMap("HERE_apollo", localStorage.HEREAPIKey);
         }
     }
 </script>
-
 </body>
 </html>
+
+
