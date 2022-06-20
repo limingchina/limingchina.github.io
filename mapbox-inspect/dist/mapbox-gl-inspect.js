@@ -406,10 +406,13 @@ function renderLayer(layerId) {
 function renderProperties(feature) {
   var sourceProperty = renderLayer(feature.layer['source-layer'] || feature.layer.source);
   var typeProperty = renderProperty('$type', feature.geometry.type);
+  var idProperty;
+  if (feature.id !== undefined)
+    idProperty = renderProperty('id', feature.id);
   var properties = Object.keys(feature.properties).map(function (propertyName) {
     return renderProperty(propertyName, feature.properties[propertyName]);
   });
-  return [sourceProperty, typeProperty].concat(properties).join('');
+  return [sourceProperty, typeProperty, idProperty].concat(properties).join('');
 }
 
 function renderFeatures(features) {
